@@ -1,0 +1,36 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>package.koala</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+    <name>Koala</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="katarina.vucicevic25@gmail.com">Katarina Vucicevic</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
+    <description>
+        This is a breakpoint tracker plugin, tracks and lists breakpoints,
+        allows realtime view, and provides user with the breakpoint map which follows the
+        sequence of breakpoint entering
+    </description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+<!--    <depends>com.intellij.modules.java</depends>-->
+<!--    <depends>com.intellij.java.debugger</depends>-->
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="BreakpointTracker"
+                    anchor="right"
+                    factoryClass="pack.koala.BreakpointToolWindowFactory"
+                    secondary="true"
+                    icon="/META-INF/pluginIcon.svg"/>
+    </extensions>
+
+</idea-plugin>
