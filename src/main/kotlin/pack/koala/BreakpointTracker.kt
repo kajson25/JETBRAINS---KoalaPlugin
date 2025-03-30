@@ -2,6 +2,7 @@ package pack.koala
 
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import com.intellij.util.messages.MessageBusConnection
@@ -30,18 +31,19 @@ class BreakpointTracker(
         )
 
         jsQuery.addHandler { encoded ->
-            val decoded = String(Base64.getDecoder().decode(encoded))
+            val padded = encoded.padEnd((encoded.length + 3) / 4 * 4, '=')
+            val decoded = String(Base64.getUrlDecoder().decode(padded))
+
             val (filePath, lineStr) = decoded.split(":")
-            val line = lineStr.toIntOrNull()?.minus(1) ?: return@addHandler null // convert back to 0-based line number
+            val line = lineStr.toIntOrNull()?.minus(1) ?: return@addHandler null
 
-            val vFile =
-                com.intellij.openapi.vfs.LocalFileSystem
-                    .getInstance()
-                    .refreshAndFindFileByPath(filePath)
-
+            val vFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(filePath)
             if (vFile != null && vFile.isValid) {
                 OpenFileDescriptor(project, vFile, line).navigate(true)
+            } else {
+                println("🚫 File not found or invalid: $filePath")
             }
+
             null
         }
 
@@ -60,9 +62,6 @@ class BreakpointTracker(
                 val line = position.line
                 val lineDisplay = line + 1
 
-                val encoded = Base64.getEncoder().encodeToString("$filePath:$lineDisplay".toByteArray())
-
-                // Extract the actual line content from file
                 val document =
                     com.intellij.openapi.fileEditor.FileDocumentManager
                         .getInstance()
@@ -77,19 +76,19 @@ class BreakpointTracker(
                             ).trim()
                     } ?: "(line unavailable)"
 
+                val encodedPath = "$filePath:$lineDisplay"
+
                 """
-        <div class="card">
-          <div class="card-title">
-            <a href="#" onclick="window.__IntelliJBridge__('$encoded')">$fileName: Line $lineDisplay</a>
-          </div>
-          <pre class="code-line">$codeLine</pre>
-        </div>
-        """
+                <div class="card">
+                  <div class="card-title">
+                    <a href="navigate://$encodedPath">$fileName: Line $lineDisplay</a>
+                  </div>
+                  <pre class="code-line">${codeLine.replace("<", "&lt;").replace(">", "&gt;")}</pre>
+                </div>
+                """
             }
 
-        val searchScript = jsQuery.inject("window.__IntelliJBridge__")
-
-        val html =
+        val htmlBody =
             """
             <html>
               <head>
@@ -119,19 +118,10 @@ class BreakpointTracker(
                 <input type="text" placeholder="Search..." oninput="filterList(this.value)">
                 <h2>Breakpoints</h2>
                 <div id="breakpoint-list">$htmlList</div>
-                <script>
-                  $searchScript
-                  function filterList(query) {
-                    const list = document.querySelectorAll('#breakpoint-list .card');
-                    list.forEach(item => {
-                      item.style.display = item.textContent.toLowerCase().includes(query.toLowerCase()) ? '' : 'none';
-                    });
-                  }
-                </script>
               </body>
             </html>
             """.trimIndent()
 
-        browser.loadHTML(html)
+        browser.loadHTML(htmlBody)
     }
 }
