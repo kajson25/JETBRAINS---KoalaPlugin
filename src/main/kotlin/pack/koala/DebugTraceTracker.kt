@@ -12,6 +12,8 @@ class DebuggerEventListener(
     private val connection: MessageBusConnection = project.messageBus.connect()
     val hitTrace = mutableListOf<BreakpointHit>()
     private lateinit var tracker: BreakpointTracker
+    var hasDebugSessionStarted = false
+        private set
 
     fun bindTracker(tracker: BreakpointTracker) {
         this.tracker = tracker
@@ -22,6 +24,10 @@ class DebuggerEventListener(
             XDebuggerManager.TOPIC,
             object : XDebuggerManagerListener {
                 override fun processStarted(debugProcess: XDebugProcess) {
+                    hasDebugSessionStarted = true
+                    hitTrace.clear()
+                    tracker.resetView()
+
                     val session = debugProcess.session
                     session.addSessionListener(
                         object : XDebugSessionListener {

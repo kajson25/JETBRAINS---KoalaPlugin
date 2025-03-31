@@ -19,6 +19,8 @@ class BreakpointToolWindowFactory : ToolWindowFactory {
         toolWindow: ToolWindow,
     ) {
         val browser = JBCefBrowser()
+        val debugger = DebuggerEventListener(project)
+        val tracker = BreakpointTracker(project, browser, debugger)
 
         browser.jbCefClient.addRequestHandler(
             object : CefRequestHandlerAdapter() {
@@ -34,6 +36,13 @@ class BreakpointToolWindowFactory : ToolWindowFactory {
 
                     if (url.startsWith("navigate://")) {
                         val decoded = url.removePrefix("navigate://")
+                        if (decoded == "__toggle__") {
+                            ApplicationManager.getApplication().invokeLater {
+                                tracker.toggleView()
+                            }
+                            return true
+                        }
+
                         val lastColonIndex = decoded.lastIndexOf(':')
                         if (lastColonIndex == -1) return true
 
@@ -61,20 +70,7 @@ class BreakpointToolWindowFactory : ToolWindowFactory {
         val content = contentFactory.createContent(browser.component, "", false)
         toolWindow.contentManager.addContent(content)
 
-        browser.loadHTML(
-            """
-            <html>
-              <head><style>body { font-family: sans-serif; }</style></head>
-              <body>
-                <h2>Breakpoints</h2>
-                <ul id="breakpoint-list"></ul>
-              </body>
-            </html>
-            """.trimIndent(),
-        )
-
-        val debugger = DebuggerEventListener(project)
-        val tracker = BreakpointTracker(project, browser, debugger)
         debugger.bindTracker(tracker)
+        tracker.resetView()
     }
 }
