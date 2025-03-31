@@ -73,6 +73,8 @@ class BreakpointToolWindowFactory : ToolWindowFactory {
             """.trimIndent(),
         )
 
-        BreakpointTracker(project, browser)
+        val debugger = DebuggerEventListener(project)
+        val tracker = BreakpointTracker(project, browser, debugger)
+        debugger.bindTracker(tracker)
     }
 }
