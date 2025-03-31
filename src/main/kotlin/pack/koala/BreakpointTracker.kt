@@ -3,6 +3,7 @@
 package pack.koala
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -82,12 +83,6 @@ class BreakpointTracker(
         updateUI()
     }
 
-    fun displayDebugDiagram() {
-        showTrace = true
-        showDiagram = true
-        updateUI()
-    }
-
     fun toggleView() {
         showTrace = true
         showDiagram = !showDiagram
@@ -101,7 +96,14 @@ class BreakpointTracker(
     }
 
     private fun updateUI() {
-        val breakpoints = XDebuggerManager.getInstance(project).breakpointManager.allBreakpoints
+        val breakpoints =
+            runReadAction {
+                XDebuggerManager
+                    .getInstance(project)
+                    .breakpointManager.allBreakpoints
+                    .toList()
+            }
+
         val hits = debugger.getHits()
         val hitStats = hits.groupingBy { it.filePath to it.line }.eachCount()
         val hitSet = hits.map { it.filePath to it.line }.toSet()
@@ -222,63 +224,63 @@ class BreakpointTracker(
                 border-radius: 4px;
                 font-family: monospace;
               }
-                .diagram-container {
-                  display: flex;
-                  flex-wrap: wrap;
-                  gap: 12px;
-                  margin: 20px 0;
-                  justify-content: center;
-                }
-                .diagram-node {
-                  background-color: #28a745;
-                  color: white;
-                  border-radius: 8px;
-                  padding: 10px 14px;
-                  font-family: monospace;
-                  font-size: 13px;
-                  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-                  max-width: 250px;
-                  word-break: break-word;
-                  text-align: center;
-                  transition: transform 0.2s ease;
-                }
-                .diagram-node:hover {
-                  transform: scale(1.05);
-                  background-color: #34c759;
-                }
-                .diagram-arrows {
-                  font-family: monospace;
-                  margin-top: 25px;
-                  background: #282c34;
-                  padding: 10px;
-                  border-radius: 6px;
-                  white-space: pre-wrap;
-                  font-size: 13px;
-                  color: #ccc;
-                  line-height: 1.5;
-                }
-                .arrow {
-                  margin: 8px 0;
-                  padding: 10px;
-                  background-color: #2e2e2e;
-                  border-radius: 6px;
-                  color: #ffcc00;
-                  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-                  font-family: monospace;
-                }
-                .btn-toggle {
-                  display: inline-block;
-                  margin-bottom: 10px;
-                  padding: 6px 10px;
-                  background: #007bff;
-                  color: white;
-                  border: none;
-                  border-radius: 4px;
-                  text-decoration: none;
-                  cursor: pointer;
-                }
-
+              .diagram-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+                margin: 20px 0;
+                justify-content: center;
+              }
+              .diagram-node {
+                background-color: #28a745;
+                color: white;
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-family: monospace;
+                font-size: 13px;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+                max-width: 250px;
+                word-break: break-word;
+                text-align: center;
+                transition: transform 0.2s ease;
+              }
+              .diagram-node:hover {
+                transform: scale(1.05);
+                background-color: #34c759;
+              }
+              .diagram-arrows {
+                font-family: monospace;
+                margin-top: 25px;
+                background: #282c34;
+                padding: 10px;
+                border-radius: 6px;
+                white-space: pre-wrap;
+                font-size: 13px;
+                color: #ccc;
+                line-height: 1.5;
+              }
+              .arrow {
+                margin: 8px 0;
+                padding: 10px;
+                background-color: #2e2e2e;
+                border-radius: 6px;
+                color: #ffcc00;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+                font-family: monospace;
+              }
+              .btn-toggle {
+                display: inline-block;
+                margin-bottom: 10px;
+                padding: 6px 10px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                text-decoration: none;
+                cursor: pointer;
+              }
             </style>
+            
             <script>
               function filterList(query) {
                 query = query.toLowerCase();
@@ -305,6 +307,7 @@ class BreakpointTracker(
           </head>
           <body>
             <a href="navigate://__toggle__" class="btn-toggle">Switch View</a>
+            <a href="navigate://__suggest__" class="btn-toggle">Suggest Breakpoints</a>
             <input type="text" placeholder="Search..." oninput="filterList(this.value)">
             <h2>$title</h2>
             $content
@@ -360,5 +363,26 @@ class BreakpointTracker(
         ${arrowsHtml.joinToString("\n")}
       </div>
     """
+    }
+
+    fun displaySuggestions() {
+        val suggestions = HeuristicEngine(project, debugger).analyze()
+
+        val cards =
+            suggestions.joinToString("\n") { suggestion ->
+                val encoded = "${suggestion.filePath}:${suggestion.line + 1}"
+                """
+                <div class="card" style="background-color: #fff3cd; color: #333;">
+                  <div class="card-title">
+                    <a href="navigate://$encoded">${File(suggestion.filePath).name}: Line ${suggestion.line + 1}</a>
+                  </div>
+                  <div class="code-line">${suggestion.code}</div>
+                  <div><i>${suggestion.reason}</i></div>
+                </div>
+                """
+            }
+
+        val html = wrapInHTML(cards, "Suggested Breakpoints")
+        browser.loadHTML(html)
     }
 }

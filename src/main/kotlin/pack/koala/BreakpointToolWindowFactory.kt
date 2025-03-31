@@ -31,7 +31,6 @@ class BreakpointToolWindowFactory : ToolWindowFactory {
                     userGesture: Boolean,
                     isRedirect: Boolean,
                 ): Boolean {
-                    println("Request url: ${request?.url}")
                     val url = request?.url ?: return false
 
                     if (url.startsWith("navigate://")) {
@@ -39,6 +38,12 @@ class BreakpointToolWindowFactory : ToolWindowFactory {
                         if (decoded == "__toggle__") {
                             ApplicationManager.getApplication().invokeLater {
                                 tracker.toggleView()
+                            }
+                            return true
+                        }
+                        if (decoded == "__suggest__") {
+                            ApplicationManager.getApplication().invokeLater {
+                                tracker.displaySuggestions()
                             }
                             return true
                         }

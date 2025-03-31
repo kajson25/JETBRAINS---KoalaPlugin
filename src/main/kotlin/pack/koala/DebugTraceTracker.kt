@@ -54,6 +54,7 @@ class DebuggerEventListener(
                                     println("${index + 1}. ${hit.filePath}:${hit.line + 1}")
                                 }
                                 tracker.displayDebugTrace()
+                                tracker.displaySuggestions()
                             }
                         },
                     )
